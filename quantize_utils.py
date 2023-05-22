@@ -3,6 +3,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.cuda.amp import custom_bwd, custom_fwd
+try:
+    import custom_autotune
+except:
+    from quantized_llama import custom_autotune
 
 #https://github.com/fpgaminer/GPTQ-triton
 """
@@ -41,7 +45,7 @@ def matmul248_kernel_config_pruner(configs, nargs):
 try:
     import triton
     import triton.language as tl
-    import custom_autotune
+    
 
     # code based https://github.com/fpgaminer/GPTQ-triton
     @custom_autotune.autotune(

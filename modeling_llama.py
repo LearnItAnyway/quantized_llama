@@ -14,6 +14,13 @@ from transformers.utils import add_start_docstrings, add_start_docstrings_to_mod
 from transformers.models.llama.configuration_llama import LlamaConfig
 from transformers.models.llama.modeling_llama import LlamaPreTrainedModel, LLAMA_START_DOCSTRING, LLAMA_INPUTS_DOCSTRING, LlamaDecoderLayer, LlamaRMSNorm, LlamaAttention, LlamaMLP, _make_causal_mask, _expand_mask
 
+try:
+    from quantize_utils import QuantLinear
+    from quantize_utils import make_quant_norm, make_quant_attn
+except:
+    from quantized_llama.quantize_utils import QuantLinear
+    from quantized_llama.quantize_utils import make_quant_norm, make_quant_attn
+    
 _CONFIG_FOR_DOC = "LlamaConfig"
 
 class LlamaCustomModel(LlamaPreTrainedModel):
@@ -40,8 +47,6 @@ class LlamaCustomModel(LlamaPreTrainedModel):
 
             print('started')
             #self.layers = nn.ModuleList([LlamaDecoderLayer(config) for _ in range(config.num_hidden_layers)])
-            from quantize_utils import QuantLinear
-            from quantize_utils import make_quant_norm, make_quant_attn
             bits, groupsize = config.quant_bits, config.quant_groupsize
             quant_layers = config.quant_layers
             self.layers = nn.ModuleList([])

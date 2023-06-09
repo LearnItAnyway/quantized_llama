@@ -20,8 +20,22 @@ try:
 except:
     from quantized_llama.quantize_utils import QuantLinear
     from quantized_llama.quantize_utils import make_quant_norm, make_quant_attn
-    
+
 _CONFIG_FOR_DOC = "LlamaConfig"
+
+class QuantLinearLoRA(nn.Module):
+    def __init__(self, lora_conf, quant_linear):
+        super().__init__()
+        self.quant_linear = quant_linear
+        self.lora_conf = lora_conf
+        self.lora_linear = nn.Sequential(
+            nn.Linear(self.quant_linear.infeatures, self.lora_conf.lora_rank, False),
+            nn.Linear(self.lora_conf.lora_rank, self.quant_linear.outfeatures, False),)
+
+    def forward(self, x):
+        qx = self.quant_linear(x)
+        lx = self.lora_linear(x)
+        return qx + self.lora_conf.lora_alpha*lx
 
 class LlamaCustomModel(LlamaPreTrainedModel):
     """
@@ -75,6 +89,13 @@ class LlamaCustomModel(LlamaPreTrainedModel):
             make_quant_norm(self.layers[:config.quant_layers])
             self.layers[:config.quant_layers].half()
 
+            if hasattr(config, 'lora_layers'):
+                for i in range(config.lora_layers):
+                    self.layers[i].self_attn.qkv_proj = QuantLinearLoRA(config, self.layers[i].self_attn.qkv_proj)
+                    self.layers[i].self_attn.o_proj = QuantLinearLoRA(config, self.layers[i].self_attn.o_proj)
+                    self.layers[i].mlp.gate_proj = QuantLinearLoRA(config, self.layers[i].mlp.gate_proj)
+                    self.layers[i].mlp.down_proj = QuantLinearLoRA(config, self.layers[i].mlp.down_proj)
+                    self.layers[i].mlp.up_proj = QuantLinearLoRA(config, self.layers[i].mlp.up_proj)
 
         self.norm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
